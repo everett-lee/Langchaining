@@ -1,4 +1,7 @@
+from langchain import WikipediaAPIWrapper
 from langchain.agents import tool
+
+wikipedia = WikipediaAPIWrapper()
 
 
 @tool
@@ -12,10 +15,11 @@ def is_prime(num: int) -> bool:
     if not isinstance(num, int):
         num = int(num)
 
-    if num < 2:     # 1 is not prime and negative numbers can't be prime
+    if num < 2:  # 1 is not prime and negative numbers can't be prime
         return False
-    for i in range(2, int(num ** 0.5) + 1):  # check for factors up to the square root of num
+    for i in range(
+        2, int(num**0.5) + 1
+    ):  # check for factors up to the square root of num
         if num % i == 0:
             return False
     return True
-

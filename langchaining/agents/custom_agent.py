@@ -1,8 +1,8 @@
-from typing import Any, List, Optional, Sequence
+from typing import Sequence
+import pandas as pd
 
 from langchain.agents.agent import AgentExecutor
 from langchain.agents.mrkl.base import ZeroShotAgent
-from langchain.callbacks.base import BaseCallbackManager
 from langchain.chains.llm import LLMChain
 from langchain.llms.base import BaseLLM
 from langchain.tools import BaseTool
@@ -14,7 +14,9 @@ Answer the following questions as best you can. You have access to the following
 
 SUFFIX = """
 This is the result of `print(df.head())`:
-{df}
+{df_head}
+This is the result of `print(df.dtypes)`:
+{df_types}
 
 The question you must answer is provided below. Begin!
 Question: {input}
@@ -32,49 +34,47 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question"""
 
 
-def create_pandas_dataframe_agent_with_search(
-    llm: BaseLLM,
-    tools: Sequence[BaseTool],
-    df: Any,
-    callback_manager: Optional[BaseCallbackManager] = None,
-    prefix: str = PREFIX,
-    suffix: str = SUFFIX,
-    input_variables: Optional[List[str]] = None,
-    verbose: bool = False,
-    return_intermediate_steps: bool = False,
-    max_iterations: Optional[int] = 15,
-    early_stopping_method: str = "force",
-    **kwargs: Any,
+def create_pandas_dataframe_agent_with_extra_tools(
+        llm: BaseLLM,
+        tools: Sequence[BaseTool],
+        df: pd.DataFrame,
+        prefix: str = PREFIX,
+        suffix: str = SUFFIX,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
+        verbose: bool = True
 ) -> AgentExecutor:
-    """Construct a pandas agent from an LLM and dataframe."""
-    import pandas as pd
-
     if not isinstance(df, pd.DataFrame):
         raise ValueError(f"Expected pandas object, got {type(df)}")
-    if input_variables is None:
-        input_variables = ["df", "input", "agent_scratchpad"]
+
     # Adding custom tools to list of tools
     tools = list(tools) + [PythonAstREPLTool(locals={"df": df})]
 
     prompt = ZeroShotAgent.create_prompt(
-        tools, prefix=prefix, suffix=suffix, format_instructions=FORMAT_INSTRUCTIONS, input_variables=input_variables
+        tools,
+        prefix=prefix,
+        suffix=suffix,
+        format_instructions=format_instructions,
+        input_variables=["input", "df_head", "df_types", "agent_scratchpad"]
     )
 
-    # Partially complete prompt with result of df.head()
-    partial_prompt = prompt.partial(df=str(df.head()))
+    # Partially complete prompt with additional info
+    partial_prompt = prompt.partial(df_head=str(df.head()), df_types=str(df.dtypes))
 
     llm_chain = LLMChain(
         llm=llm,
         prompt=partial_prompt,
-        callback_manager=callback_manager,
     )
-    tool_names = [tool.name for tool in tools]
-    agent = ZeroShotAgent(llm_chain=llm_chain, allowed_tools=tool_names, **kwargs)
-    return AgentExecutor.from_agent_and_tools(
-        agent=agent,
+
+    agent = ZeroShotAgent(
+        llm_chain=llm_chain,
         tools=tools,
-        verbose=verbose,
-        return_intermediate_steps=return_intermediate_steps,
-        max_iterations=max_iterations,
-        early_stopping_method=early_stopping_method,
     )
+    return AgentExecutor.from_agent_and_tools(agent=agent, tools=tools, verbose=verbose)
+
+
+def print_agent_prompt(agent_executor: AgentExecutor) -> None:
+    print("*" * 100)
+    print("\n")
+    print(agent_executor.agent.llm_chain.prompt.template)
+    print("\n\n")
+    print("*" * 100)

@@ -1,8 +1,10 @@
 import os
+from typing import List
 
 from langchain import FAISS
 from langchain.document_loaders import TextLoader
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchaining.helpers import BASE_DIR, gpt_key
@@ -10,7 +12,7 @@ from langchaining.helpers import BASE_DIR, gpt_key
 raw = str(BASE_DIR / "sf/raw")
 
 
-def get_docs():
+def get_docs() -> List[Document]:
     files = [file for file in os.listdir(raw) if ".txt" in file]
     docs = []
 
@@ -25,7 +27,7 @@ def get_docs():
                 chunk_size=2500,
                 chunk_overlap=50,
                 length_function=len,
-                separators=["\n\n", "\n", " ", ""]
+                separators=["\n\n", "\n", " ", ""],
             )
             texts = text_splitter.split_documents(documents)
             for text in texts:
@@ -40,7 +42,7 @@ def get_docs():
 embeddings = OpenAIEmbeddings(
     document_model_name="text-embedding-ada-002",
     query_model_name="text-embedding-ada-002",
-    openai_api_key=gpt_key
+    openai_api_key=gpt_key,
 )
 
 

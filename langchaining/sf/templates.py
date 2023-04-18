@@ -13,8 +13,7 @@ Previous scene: {previous_scene}
 """
 
 prompt_scene_one = PromptTemplate(
-    input_variables=["scene"],
-    template=template_scene_one
+    input_variables=["scene"], template=template_scene_one
 )
 
 prompt_scene_two = PromptTemplate(
